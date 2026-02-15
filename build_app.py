@@ -3,12 +3,11 @@ import os
 # --- KONFIGURATION ---
 OUTPUT_HTML = "index.html"
 OUTPUT_MANIFEST = "manifest.json"
-# Hier deine Lexikon-URL eintragen:
-LEXIKON_BASE_URL = "https://alexfractalnode.github.io/E-Nummern-Lexikon" 
+LEXIKON_BASE_URL = "https://alexfractalnode.github.io/E-Nummern-Lexikon"
 APP_NAME = "E-Check"
 THEME_COLOR = "#0f172a"
 
-# --- 1. MANIFEST GENERATOR (Für das App-Icon & Vollbild) ---
+# --- 1. MANIFEST GENERATOR ---
 manifest_content = f"""
 {{
     "name": "{APP_NAME}",
@@ -32,7 +31,7 @@ manifest_content = f"""
 }}
 """
 
-# --- 2. DER APP CODE (HTML/CSS/JS) ---
+# --- 2. DER APP CODE ---
 html_content = f"""
 <!DOCTYPE html>
 <html lang="de">
@@ -58,6 +57,7 @@ html_content = f"""
             --warning: #f59e0b; 
             --danger: #ef4444; 
             --safe: #22c55e;
+            --nav-height: 70px;
         }}
         
         * {{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }}
@@ -71,18 +71,22 @@ html_content = f"""
             display: flex; flex-direction: column; 
             overflow: hidden; 
         }}
+
+        /* --- VIEWS --- */
+        .view {{ flex: 1; display: none; flex-direction: column; height: 100%; overflow: hidden; }}
+        .view.active {{ display: flex; }}
         
-        /* Glass Header */
+        /* --- HEADER --- */
         header {{ 
-            position: absolute; top: 0; left: 0; right: 0;
             padding: 1rem; padding-top: max(1rem, env(safe-area-inset-top));
             text-align: center; 
-            background: linear-gradient(180deg, rgba(15,23,42,0.8) 0%, rgba(15,23,42,0) 100%);
-            z-index: 20; pointer-events: none;
+            background: rgba(15,23,42,0.95);
+            backdrop-filter: blur(10px);
+            z-index: 20; border-bottom: 1px solid rgba(255,255,255,0.05);
         }}
-        header h1 {{ margin: 0; font-size: 1.1rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.5); opacity: 0.9; }}
+        header h1 {{ margin: 0; font-size: 1.1rem; font-weight: 800; opacity: 0.9; }}
         
-        /* Scanner */
+        /* --- SCANNER VIEW --- */
         #scanner-wrapper {{ flex: 1; position: relative; background: #000; }}
         #reader {{ width: 100%; height: 100%; object-fit: cover; }}
         
@@ -92,18 +96,62 @@ html_content = f"""
             pointer-events: none;
         }}
         .scan-frame {{ 
-            width: 70%; aspect-ratio: 1; 
-            border-radius: 24px; 
-            position: relative; 
+            width: 70%; aspect-ratio: 1; border-radius: 24px; position: relative; 
             box-shadow: 0 0 0 4000px rgba(0,0,0,0.6); 
         }}
         .scan-frame::after {{
             content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px;
             border: 2px solid var(--primary); border-radius: 24px;
             box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+            animation: pulse-border 2s infinite;
         }}
+        @keyframes pulse-border {{ 0% {{ opacity: 0.5; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.5; }} }}
 
-        /* Loading */
+        /* --- HISTORY VIEW --- */
+        #history-list {{ 
+            flex: 1; overflow-y: auto; padding: 1rem; padding-bottom: calc(var(--nav-height) + 20px); 
+        }}
+        .history-item {{
+            background: var(--card-bg); padding: 12px; border-radius: 12px; margin-bottom: 10px;
+            display: flex; gap: 12px; align-items: center; cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.05);
+        }}
+        .h-img {{ width: 50px; height: 50px; border-radius: 8px; background: #334155; object-fit: cover; }}
+        .h-info {{ flex: 1; }}
+        .h-name {{ font-weight: 600; font-size: 0.95rem; line-height: 1.2; margin-bottom: 2px; }}
+        .h-brand {{ font-size: 0.8rem; color: var(--text-muted); }}
+        .h-date {{ font-size: 0.7rem; color: var(--text-muted); opacity: 0.7; }}
+        .h-risk {{ width: 8px; height: 8px; border-radius: 50%; }}
+
+        /* --- BOTTOM NAV --- */
+        .bottom-nav {{
+            height: var(--nav-height); background: rgba(15,23,42,0.95);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: space-around; align-items: center;
+            padding-bottom: env(safe-area-inset-bottom);
+            z-index: 50;
+        }}
+        .nav-btn {{
+            background: none; border: none; color: var(--text-muted);
+            font-size: 0.75rem; font-weight: 600;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            cursor: pointer; padding: 10px; width: 100%;
+        }}
+        .nav-btn.active {{ color: var(--primary); }}
+        .nav-icon {{ font-size: 1.4rem; }}
+
+        /* --- RESULT SHEET --- */
+        #result-sheet {{ 
+            position: absolute; bottom: 0; left: 0; right: 0; 
+            background: var(--card-bg); border-radius: 24px 24px 0 0; 
+            padding: 1.5rem; padding-bottom: max(2rem, env(safe-area-inset-bottom));
+            transform: translateY(110%); transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1); 
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5); z-index: 60; 
+            max-height: 85vh; overflow-y: auto; 
+        }}
+        #result-sheet.open {{ transform: translateY(0); }}
+
+        /* General UI Elements */
         .loader {{
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.2);
@@ -111,87 +159,62 @@ html_content = f"""
             animation: spin 0.8s linear infinite; display: none; z-index: 30;
         }}
         @keyframes spin {{ to {{ transform: translate(-50%, -50%) rotate(360deg); }} }}
-
-        /* Result Sheet */
-        #result-sheet {{ 
-            position: absolute; bottom: 0; left: 0; right: 0; 
-            background: var(--card-bg); 
-            border-radius: 24px 24px 0 0; 
-            padding: 1.5rem; padding-bottom: max(2rem, env(safe-area-inset-bottom));
-            transform: translateY(110%); 
-            transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1); 
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.5); 
-            z-index: 40; 
-            max-height: 85vh; 
-            overflow-y: auto; 
-        }}
-        #result-sheet.open {{ transform: translateY(0); }}
         
         .drag-handle {{ width: 40px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: 0 auto 1.5rem auto; }}
-
-        /* Product Header */
         .product-header {{ display: flex; gap: 16px; align-items: center; margin-bottom: 1.5rem; }}
-        .product-img {{ 
-            width: 70px; height: 70px; border-radius: 14px; 
-            background: #334155; object-fit: cover; 
-        }}
+        .product-img {{ width: 70px; height: 70px; border-radius: 14px; background: #334155; object-fit: cover; }}
         .product-info {{ flex: 1; }}
-        .product-brand {{ font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }}
-        .product-title {{ margin: 0; font-size: 1.2rem; line-height: 1.2; font-weight: 700; }}
-
-        /* Badges Grid */
+        .product-title {{ margin: 0; font-size: 1.2rem; font-weight: 700; }}
         .badge-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 1.5rem; }}
-        .info-badge {{ 
-            background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px; 
-            display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600;
-        }}
-        .icon {{ font-size: 1.2rem; }}
-        
-        .t-green {{ color: var(--safe); }}
-        .t-red {{ color: var(--danger); }}
-        .t-grey {{ color: var(--text-muted); }}
-
-        /* List */
-        .section-title {{ font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin: 0 0 10px 0; text-transform: uppercase; }}
+        .info-badge {{ background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; }}
         .item-list {{ display: flex; flex-direction: column; gap: 8px; }}
-        
-        .list-item {{ 
-            background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; 
-            display: flex; justify-content: space-between; align-items: center; 
-            cursor: pointer; transition: background 0.2s;
-        }}
-        .list-item:active {{ background: rgba(255,255,255,0.1); }}
-        
+        .list-item {{ background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }}
         .code-pill {{ font-family: monospace; font-weight: bold; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; margin-right: 6px; font-size: 0.9rem; }}
-
         .risk-blob {{ width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }}
         .bg-green {{ background: var(--safe); box-shadow: 0 0 6px var(--safe); }}
         .bg-orange {{ background: var(--warning); box-shadow: 0 0 6px var(--warning); }}
         .bg-red {{ background: var(--danger); box-shadow: 0 0 6px var(--danger); }}
-
-        /* Button */
-        .btn {{ 
-            width: 100%; padding: 16px; border: none; border-radius: 16px; 
-            font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 2rem; 
-        }}
+        .btn {{ width: 100%; padding: 16px; border: none; border-radius: 16px; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 2rem; }}
         .btn-close {{ background: rgba(255,255,255,0.1); color: white; }}
-        
+        .t-green {{ color: var(--safe); }} .t-red {{ color: var(--danger); }} .t-grey {{ color: var(--text-muted); }}
+
     </style>
 </head>
 <body>
 
-<header><h1>{APP_NAME}</h1></header>
+<header id="main-header" style="display:none;"><h1>Verlauf</h1></header>
 
-<div id="scanner-wrapper">
-    <div id="reader"></div>
-    <div class="scan-overlay"><div class="scan-frame"></div></div>
-    <div id="loading" class="loader"></div>
+<div id="view-scan" class="view active">
+    <div id="scanner-wrapper">
+        <div id="reader"></div>
+        <div class="scan-overlay"><div class="scan-frame"></div></div>
+        <div id="loading" class="loader"></div>
+    </div>
+</div>
+
+<div id="view-history" class="view">
+    <div id="history-list">
+        <div style="text-align:center; padding: 2rem; color: var(--text-muted);">
+            Noch keine Scans.<br>Dein Verlauf erscheint hier.
+        </div>
+    </div>
+</div>
+
+<div class="bottom-nav">
+    <button class="nav-btn active" onclick="switchTab('scan')">
+        <span class="nav-icon">📷</span>
+        Scanner
+    </button>
+    <button class="nav-btn" onclick="switchTab('history')">
+        <span class="nav-icon">📜</span>
+        Verlauf
+    </button>
 </div>
 
 <div id="result-sheet">
     <div class="drag-handle"></div>
     <div id="result-content"></div>
-    <button class="btn btn-close" onclick="startScanner()">Weiter scannen</button>
+    <button class="btn btn-close" onclick="closeSheet()">Schließen</button>
 </div>
 
 <script>
@@ -199,54 +222,145 @@ html_content = f"""
     let db = {{}};
     let html5QrcodeScanner = null;
     let isScanning = true;
+    let historyData = JSON.parse(localStorage.getItem('echeck_history') || '[]');
 
-    // Lade Datenbank
+    // --- INIT ---
     fetch('app_database.json').then(r => r.json()).then(data => {{ db = data; }});
+    renderHistory();
 
-    // Hilfsfunktion für URLs (Slug)
-    function createSlug(code, name) {{
-        return (code + "-" + name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    // --- UI LOGIC ---
+    function switchTab(tab) {{
+        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+        
+        if(tab === 'scan') {{
+            document.getElementById('view-scan').classList.add('active');
+            document.querySelectorAll('.nav-btn')[0].classList.add('active');
+            document.getElementById('main-header').style.display = 'none';
+            startScanner();
+        }} else {{
+            document.getElementById('view-history').classList.add('active');
+            document.querySelectorAll('.nav-btn')[1].classList.add('active');
+            document.getElementById('main-header').style.display = 'block';
+            stopScanner();
+            renderHistory();
+        }}
     }}
 
-    // Scanner starten
-    function startScanner() {{
+    function closeSheet() {{
         document.getElementById('result-sheet').classList.remove('open');
-        document.getElementById('loading').style.display = 'none';
+        if(document.getElementById('view-scan').classList.contains('active')) {{
+            startScanner();
+        }}
+    }}
+
+    // --- HAPTICS & SOUND ---
+    function playFeedback() {{
+        // Vibration
+        if (navigator.vibrate) navigator.vibrate(50);
         
+        // Sound (Beep)
+        try {{
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.1);
+        }} catch(e) {{}}
+    }}
+
+    // --- SCANNER LOGIC ---
+    function startScanner() {{
         if(html5QrcodeScanner) return;
-        
-        // Zwingt Rückkamera (environment)
+        document.getElementById('loading').style.display = 'none';
         html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ 
-            fps: 10, 
-            qrbox: 250, 
-            facingMode: {{ exact: "environment" }} 
+            fps: 10, qrbox: 250, facingMode: {{ exact: "environment" }} 
         }});
-        
         html5QrcodeScanner.render(onScanSuccess, (err) => {{}});
         isScanning = true;
+    }}
+
+    function stopScanner() {{
+        if(html5QrcodeScanner) {{
+            try {{ html5QrcodeScanner.clear(); }} catch(e) {{}}
+            html5QrcodeScanner = null;
+        }}
+        isScanning = false;
     }}
 
     function onScanSuccess(barcode) {{
         if(!isScanning) return;
         isScanning = false;
-        try {{ html5QrcodeScanner.clear(); html5QrcodeScanner = null; }} catch(e){{}}
+        playFeedback(); // BZZZT!
+        stopScanner();
         analyzeProduct(barcode);
     }}
 
-    // Analyse
+    // --- HISTORY LOGIC ---
+    function addToHistory(product, riskColor) {{
+        // Duplikate vermeiden (Barcode prüfen)
+        historyData = historyData.filter(h => h.code !== product._id);
+        
+        const newItem = {{
+            code: product._id,
+            name: product.product_name || 'Unbekannt',
+            brand: product.brands || '',
+            img: product.image_front_small_url || '',
+            risk: riskColor, // bg-green, bg-red, etc.
+            date: new Date().toLocaleDateString()
+        }};
+        
+        historyData.unshift(newItem); // Neu nach oben
+        if(historyData.length > 50) historyData.pop(); // Max 50 Items
+        
+        localStorage.setItem('echeck_history', JSON.stringify(historyData));
+        renderHistory();
+    }}
+
+    function renderHistory() {{
+        const list = document.getElementById('history-list');
+        if(historyData.length === 0) return;
+        
+        list.innerHTML = '';
+        historyData.forEach(item => {{
+            list.innerHTML += `
+            <div class="history-item" onclick="analyzeProduct('${{item.code}}')">
+                <img src="${{item.img || 'https://via.placeholder.com/50'}}" class="h-img">
+                <div class="h-info">
+                    <div class="h-name">${{item.name}}</div>
+                    <div class="h-brand">${{item.brand}}</div>
+                    <div class="h-date">${{item.date}}</div>
+                </div>
+                <div class="h-risk ${{item.risk}}"></div>
+            </div>`;
+        }});
+    }}
+
+    // --- ANALYZE LOGIC ---
     async function analyzeProduct(barcode) {{
         const sheet = document.getElementById('result-sheet');
         const content = document.getElementById('result-content');
         const loader = document.getElementById('loading');
         
-        loader.style.display = 'block';
+        // Zeige Loader nur wenn wir im Scanner Mode sind
+        if(document.getElementById('view-scan').classList.contains('active')) {{
+             loader.style.display = 'block';
+        }}
+        
         content.innerHTML = "";
 
         try {{
-            // API Call
             const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${{barcode}}.json`);
             const data = await response.json();
-            loader.style.display = 'none';
+            
+            if(loader) loader.style.display = 'none';
             sheet.classList.add('open');
 
             if (data.status === 0) {{
@@ -256,25 +370,18 @@ html_content = f"""
 
             const p = data.product;
             
-            // --- DATA ANALYSIS ---
+            // --- ANALYSE & HTML GENERIEREN (wie vorher) ---
             const tags = p.ingredients_analysis_tags || [];
-            const allergens = p.allergens_tags || []; 
+            const allergens = p.allergens_tags || [];
+            const additives = p.additives_tags || [];
             
-            // Vegan/Veggie
             const isVegan = tags.includes('en:vegan');
             const isNonVegan = tags.includes('en:non-vegan');
             const isVegetarian = tags.includes('en:vegetarian');
-            
-            // Gluten / Laktose (Naive Suche)
-            const hasGluten = allergens.some(a => a.includes('gluten') || a.includes('wheat') || a.includes('rye'));
+            const hasGluten = allergens.some(a => a.includes('gluten') || a.includes('wheat'));
             const hasMilk = allergens.some(a => a.includes('milk') || a.includes('lactose'));
             
-            // Zusatzstoffe
-            const additives = p.additives_tags || [];
-
-            // --- HTML BAUEN ---
-            
-            // Header
+            // Generiere HTML
             let html = `
                 <div class="product-header">
                     <img src="${{p.image_front_small_url || 'https://via.placeholder.com/80'}}" class="product-img">
@@ -283,28 +390,24 @@ html_content = f"""
                         <h2 class="product-title">${{p.product_name || 'Produkt'}}</h2>
                     </div>
                 </div>
-                
                 <div class="badge-grid">
             `;
 
-            // Badge: Vegan Status
+            // Badges
             if(isVegan) html += `<div class="info-badge"><span class="icon">🌱</span><span class="t-green">Vegan</span></div>`;
             else if(isNonVegan) html += `<div class="info-badge"><span class="icon">🥩</span><span class="t-red">Nicht Vegan</span></div>`;
-            else if(isVegetarian) html += `<div class="info-badge"><span class="icon">🧀</span><span class="t-green">Vegetarisch</span></div>`;
             else html += `<div class="info-badge"><span class="icon">❓</span><span class="t-grey">Veg-Status?</span></div>`;
 
-            // Badge: Gluten
             if(hasGluten) html += `<div class="info-badge"><span class="icon">🌾</span><span class="t-red">Gluten</span></div>`;
             else html += `<div class="info-badge"><span class="icon">🍞</span><span class="t-green">Glutenfrei*</span></div>`;
 
-            // Badge: Laktose
             if(hasMilk) html += `<div class="info-badge"><span class="icon">🥛</span><span class="t-red">Laktose</span></div>`;
             else html += `<div class="info-badge"><span class="icon">💧</span><span class="t-green">Laktosefrei*</span></div>`;
 
-            html += `</div>`; 
-            html += `<p style="font-size:0.7rem; color:#64748b; margin-top:-10px;">*Basierend auf Allergen-Tags</p>`;
+            html += `</div>`;
 
-            // Liste der E-Nummern
+            // Liste E-Nummern
+            let overallRisk = "bg-green"; // Default
             if(additives.length > 0) {{
                 html += `<div class="section-title">Zusatzstoffe</div><div class="item-list">`;
                 additives.forEach(tag => {{
@@ -317,8 +420,14 @@ html_content = f"""
                     if(info) {{
                         name = info.n;
                         if(info.r.includes("Unbedenklich")) color = "bg-green";
-                        if(info.r.includes("Bedenklich") || info.r.includes("Hoch")) color = "bg-red";
-                        link = `${{LEXIKON_URL}}/${{createSlug(code, name)}}.html`;
+                        if(info.r.includes("Bedenklich") || info.r.includes("Hoch")) {{
+                            color = "bg-red";
+                            overallRisk = "bg-red"; // Schlimmstes Risiko gewinnt
+                        }} else if (info.r.includes("Vorsicht") && overallRisk !== "bg-red") {{
+                             overallRisk = "bg-orange";
+                        }}
+                        
+                        link = `${{LEXIKON_URL}}/${{code.toLowerCase().replace(/[^a-z0-9]+/g, '-')}}-${{name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}}.html`;
                     }} else {{
                         name = "Nicht in DB";
                     }}
@@ -338,10 +447,13 @@ html_content = f"""
             }}
 
             content.innerHTML = html;
+            
+            // HISTORY SPEICHERN
+            addToHistory(p, overallRisk);
 
         }} catch (e) {{
-            loader.style.display = 'none';
-            content.innerHTML = "Fehler beim Laden (Internet?).";
+            if(loader) loader.style.display = 'none';
+            content.innerHTML = "Fehler beim Laden.";
             sheet.classList.add('open');
         }}
     }}
