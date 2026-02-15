@@ -2,17 +2,14 @@ name: Build E-Check App
 
 on:
   push:
-    paths:
-      - 'generated_additives.json'
-      - 'build_app.py'
-      - 'convert_db.py'
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,15 +21,21 @@ jobs:
         with:
           python-version: '3.9'
 
+      # SCHRITT 1: Datenbank für die App vorbereiten
+      # (Wir nutzen convert_db.py, NICHT build_wiki.py)
       - name: 1. Datenbank konvertieren 🔄
         run: python convert_db.py
 
-      - name: 2. HTML App generieren 🏗️
+      # SCHRITT 2: Die App (HTML & Manifest) bauen
+      - name: 2. App generieren 🏗️
         run: python build_app.py
 
+      # SCHRITT 3: Alles speichern
       - name: Änderungen speichern (Commit & Push) 💾
         run: |
           git config --global user.name "App-Bot 🤖"
           git config --global user.email "bot@example.com"
-          git add app_database.json index.html
-          git diff-index --quiet HEAD || (git commit -m "🚀 App Update: DB & HTML neu gebaut" && git push)
+          # Wir speichern explizit nur die App-Dateien
+          git add app_database.json index.html manifest.json
+          # Nur pushen, wenn sich wirklich was geändert hat, um Fehler zu vermeiden
+          git diff-index --quiet HEAD || (git commit -m "🚀 App Update Success" && git push)
