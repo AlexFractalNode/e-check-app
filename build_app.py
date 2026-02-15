@@ -3,7 +3,8 @@ import os
 # --- KONFIGURATION ---
 OUTPUT_HTML = "index.html"
 OUTPUT_MANIFEST = "manifest.json"
-LEXIKON_BASE_URL = "https://alexfractalnode.github.io/E-Nummern-Lexikon"
+# Hier deine Lexikon-URL eintragen:
+LEXIKON_BASE_URL = "https://alexfractalnode.github.io/E-Nummern-Lexikon" 
 APP_NAME = "E-Check"
 THEME_COLOR = "#0f172a"
 
@@ -199,17 +200,28 @@ html_content = f"""
     let html5QrcodeScanner = null;
     let isScanning = true;
 
+    // Lade Datenbank
     fetch('app_database.json').then(r => r.json()).then(data => {{ db = data; }});
 
+    // Hilfsfunktion für URLs (Slug)
     function createSlug(code, name) {{
         return (code + "-" + name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     }}
 
+    // Scanner starten
     function startScanner() {{
         document.getElementById('result-sheet').classList.remove('open');
         document.getElementById('loading').style.display = 'none';
+        
         if(html5QrcodeScanner) return;
-        html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ fps: 10, qrbox: 250, facingMode: {{ exact: "environment" }} }});
+        
+        // Zwingt Rückkamera (environment)
+        html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ 
+            fps: 10, 
+            qrbox: 250, 
+            facingMode: {{ exact: "environment" }} 
+        }});
+        
         html5QrcodeScanner.render(onScanSuccess, (err) => {{}});
         isScanning = true;
     }}
@@ -221,6 +233,7 @@ html_content = f"""
         analyzeProduct(barcode);
     }}
 
+    // Analyse
     async function analyzeProduct(barcode) {{
         const sheet = document.getElementById('result-sheet');
         const content = document.getElementById('result-content');
@@ -230,6 +243,7 @@ html_content = f"""
         content.innerHTML = "";
 
         try {{
+            // API Call
             const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${{barcode}}.json`);
             const data = await response.json();
             loader.style.display = 'none';
@@ -242,23 +256,23 @@ html_content = f"""
 
             const p = data.product;
             
-            // --- DEEP ANALYSIS ---
+            // --- DATA ANALYSIS ---
             const tags = p.ingredients_analysis_tags || [];
-            const allergens = p.allergens_tags || []; // ["en:milk", "en:gluten"]
+            const allergens = p.allergens_tags || []; 
             
-            // 1. VEGAN / VEGETARISCH
+            // Vegan/Veggie
             const isVegan = tags.includes('en:vegan');
             const isNonVegan = tags.includes('en:non-vegan');
             const isVegetarian = tags.includes('en:vegetarian');
             
-            // 2. INTOLERANZEN (Naive Suche in Allergenen)
+            // Gluten / Laktose (Naive Suche)
             const hasGluten = allergens.some(a => a.includes('gluten') || a.includes('wheat') || a.includes('rye'));
             const hasMilk = allergens.some(a => a.includes('milk') || a.includes('lactose'));
             
-            // 3. ZUSATZSTOFFE
+            // Zusatzstoffe
             const additives = p.additives_tags || [];
 
-            // --- HTML GENERATOR ---
+            // --- HTML BAUEN ---
             
             // Header
             let html = `
@@ -273,26 +287,26 @@ html_content = f"""
                 <div class="badge-grid">
             `;
 
-            // Vegan Logic
+            // Badge: Vegan Status
             if(isVegan) html += `<div class="info-badge"><span class="icon">🌱</span><span class="t-green">Vegan</span></div>`;
             else if(isNonVegan) html += `<div class="info-badge"><span class="icon">🥩</span><span class="t-red">Nicht Vegan</span></div>`;
             else if(isVegetarian) html += `<div class="info-badge"><span class="icon">🧀</span><span class="t-green">Vegetarisch</span></div>`;
             else html += `<div class="info-badge"><span class="icon">❓</span><span class="t-grey">Veg-Status?</span></div>`;
 
-            // Gluten Logic
+            // Badge: Gluten
             if(hasGluten) html += `<div class="info-badge"><span class="icon">🌾</span><span class="t-red">Gluten</span></div>`;
             else html += `<div class="info-badge"><span class="icon">🍞</span><span class="t-green">Glutenfrei*</span></div>`;
 
-            // Laktose Logic
+            // Badge: Laktose
             if(hasMilk) html += `<div class="info-badge"><span class="icon">🥛</span><span class="t-red">Laktose</span></div>`;
             else html += `<div class="info-badge"><span class="icon">💧</span><span class="t-green">Laktosefrei*</span></div>`;
 
-            html += `</div>`; // End Grid
-            html += `<p style="font-size:0.7rem; color:#64748b; margin-top:-10px;">*Basierend auf Allergen-Tags. Keine Garantie.</p>`;
+            html += `</div>`; 
+            html += `<p style="font-size:0.7rem; color:#64748b; margin-top:-10px;">*Basierend auf Allergen-Tags</p>`;
 
-            // E-Nummern Liste
+            // Liste der E-Nummern
             if(additives.length > 0) {{
-                html += `<div class="section-title">Enthaltene Zusatzstoffe</div><div class="item-list">`;
+                html += `<div class="section-title">Zusatzstoffe</div><div class="item-list">`;
                 additives.forEach(tag => {{
                     let code = tag.split(':')[1].toUpperCase();
                     let info = db[code];
@@ -320,14 +334,14 @@ html_content = f"""
                 }});
                 html += `</div>`;
             }} else {{
-                html += `<div style="text-align:center; padding:20px; color:#94a3b8; background:rgba(255,255,255,0.05); border-radius:12px;">✅ Keine E-Nummern deklariert</div>`;
+                html += `<div style="text-align:center; padding:20px; color:#94a3b8; background:rgba(255,255,255,0.05); border-radius:12px;">✅ Keine E-Nummern gefunden</div>`;
             }}
 
             content.innerHTML = html;
 
         }} catch (e) {{
             loader.style.display = 'none';
-            content.innerHTML = "Fehler beim Laden.";
+            content.innerHTML = "Fehler beim Laden (Internet?).";
             sheet.classList.add('open');
         }}
     }}
