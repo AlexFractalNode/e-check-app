@@ -4,7 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>E-Check Pro</title>
+    <title>E-Check</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/192/organic-food.png">
+    
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         :root { 
@@ -16,7 +23,6 @@
             --warning: #f59e0b; 
             --danger: #ef4444; 
             --safe: #22c55e;
-            --accent: #3b82f6;
         }
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -31,41 +37,36 @@
             overflow: hidden; 
         }
         
-        /* Modern Header */
+        /* Glass Header */
         header { 
             position: absolute; top: 0; left: 0; right: 0;
             padding: 1rem; padding-top: max(1rem, env(safe-area-inset-top));
             text-align: center; 
-            background: linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0) 100%);
-            z-index: 20;
-            pointer-events: none;
+            background: linear-gradient(180deg, rgba(15,23,42,0.8) 0%, rgba(15,23,42,0) 100%);
+            z-index: 20; pointer-events: none;
         }
-        header h1 { margin: 0; font-size: 1.2rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.5); color: white; }
+        header h1 { margin: 0; font-size: 1.1rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.5); opacity: 0.9; }
         
-        /* Fullscreen Scanner */
+        /* Scanner */
         #scanner-wrapper { flex: 1; position: relative; background: #000; }
         #reader { width: 100%; height: 100%; object-fit: cover; }
         
-        /* UI Overlay */
         .scan-overlay { 
             position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
             display: flex; align-items: center; justify-content: center; 
             pointer-events: none;
         }
         .scan-frame { 
-            width: 280px; height: 280px; 
-            border: 2px solid rgba(255,255,255,0.3); 
+            width: 70%; aspect-ratio: 1; 
             border-radius: 24px; 
             position: relative; 
-            box-shadow: 0 0 0 4000px rgba(0,0,0,0.6); /* Dimmed Background */
+            box-shadow: 0 0 0 4000px rgba(0,0,0,0.6); 
         }
         .scan-frame::after {
             content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px;
             border: 2px solid var(--primary); border-radius: 24px;
-            clip-path: polygon(0% 20%, 0% 0%, 20% 0%, 80% 0%, 100% 0%, 100% 20%, 100% 80%, 100% 100%, 80% 100%, 20% 100%, 0% 100%, 0% 80%);
-            animation: pulse 2s infinite;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
         }
-        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
         /* Loading */
         .loader {
@@ -76,105 +77,86 @@
         }
         @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
-        /* Bottom Sheet (Result) */
+        /* Result Sheet */
         #result-sheet { 
             position: absolute; bottom: 0; left: 0; right: 0; 
             background: var(--card-bg); 
             border-radius: 24px 24px 0 0; 
-            padding: 1.5rem; padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+            padding: 1.5rem; padding-bottom: max(2rem, env(safe-area-inset-bottom));
             transform: translateY(110%); 
-            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1); 
+            transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1); 
             box-shadow: 0 -10px 40px rgba(0,0,0,0.5); 
             z-index: 40; 
             max-height: 85vh; 
             overflow-y: auto; 
-            border-top: 1px solid rgba(255,255,255,0.1);
         }
         #result-sheet.open { transform: translateY(0); }
         
         .drag-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: 0 auto 1.5rem auto; }
 
         /* Product Header */
-        .product-header { display: flex; gap: 16px; align-items: start; margin-bottom: 1.5rem; }
+        .product-header { display: flex; gap: 16px; align-items: center; margin-bottom: 1.5rem; }
         .product-img { 
-            width: 80px; height: 80px; border-radius: 16px; 
+            width: 70px; height: 70px; border-radius: 14px; 
             background: #334155; object-fit: cover; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
         .product-info { flex: 1; }
-        .product-brand { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-        .product-title { margin: 0; font-size: 1.3rem; line-height: 1.3; font-weight: 700; }
+        .product-brand { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }
+        .product-title { margin: 0; font-size: 1.2rem; line-height: 1.2; font-weight: 700; }
 
-        /* Sections */
-        .section-title { font-size: 0.9rem; font-weight: 700; color: var(--text-muted); margin: 1.5rem 0 0.8rem 0; text-transform: uppercase; letter-spacing: 0.05em; }
-        
-        /* Grid for Diet Info */
-        .diet-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .diet-card { 
-            background: rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; 
-            display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.05);
+        /* Badges Grid */
+        .badge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 1.5rem; }
+        .info-badge { 
+            background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px; 
+            display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600;
         }
-        .diet-icon { font-size: 1.5rem; }
-        .diet-label { font-size: 0.9rem; font-weight: 600; }
-        .diet-sub { font-size: 0.75rem; color: var(--text-muted); display: block; }
+        .icon { font-size: 1.2rem; }
         
-        .status-green { color: var(--safe); }
-        .status-red { color: var(--danger); }
-        .status-grey { color: var(--text-muted); }
+        .t-green { color: var(--safe); }
+        .t-red { color: var(--danger); }
+        .t-grey { color: var(--text-muted); }
 
-        /* Additive List */
-        .additive-list { display: flex; flex-direction: column; gap: 8px; }
-        .additive-item { 
-            background: rgba(255,255,255,0.05); padding: 14px; border-radius: 12px; 
+        /* List */
+        .section-title { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin: 0 0 10px 0; text-transform: uppercase; }
+        .item-list { display: flex; flex-direction: column; gap: 8px; }
+        
+        .list-item { 
+            background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; 
             display: flex; justify-content: space-between; align-items: center; 
-            border: 1px solid transparent; transition: all 0.2s; cursor: pointer;
+            cursor: pointer; transition: background 0.2s;
         }
-        .additive-item:active { background: rgba(255,255,255,0.1); transform: scale(0.98); }
+        .list-item:active { background: rgba(255,255,255,0.1); }
         
-        /* Clickable Indicator */
-        .additive-arrow { color: var(--text-muted); font-size: 1.2rem; opacity: 0.5; }
+        .code-pill { font-family: monospace; font-weight: bold; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; margin-right: 6px; font-size: 0.9rem; }
 
-        .code-badge { 
-            font-family: monospace; font-weight: bold; font-size: 0.9rem; 
-            padding: 4px 8px; border-radius: 6px; margin-right: 8px;
-            background: rgba(0,0,0,0.3);
-        }
-        
-        .risk-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-        .dot-green { background: var(--safe); box-shadow: 0 0 8px var(--safe); }
-        .dot-orange { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
-        .dot-red { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+        .risk-blob { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .bg-green { background: var(--safe); box-shadow: 0 0 6px var(--safe); }
+        .bg-orange { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+        .bg-red { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
 
         /* Button */
         .btn { 
             width: 100%; padding: 16px; border: none; border-radius: 16px; 
             font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 2rem; 
-            transition: transform 0.2s;
         }
-        .btn:active { transform: scale(0.97); }
-        .btn-primary { background: var(--primary); color: #000; }
         .btn-close { background: rgba(255,255,255,0.1); color: white; }
         
     </style>
 </head>
 <body>
 
-<header>
-    <h1>E-Check Pro</h1>
-</header>
+<header><h1>E-Check</h1></header>
 
 <div id="scanner-wrapper">
     <div id="reader"></div>
-    <div class="scan-overlay">
-        <div class="scan-frame"></div>
-    </div>
+    <div class="scan-overlay"><div class="scan-frame"></div></div>
     <div id="loading" class="loader"></div>
 </div>
 
 <div id="result-sheet">
     <div class="drag-handle"></div>
     <div id="result-content"></div>
-    <button class="btn btn-close" onclick="startScanner()">Nächstes Produkt scannen</button>
+    <button class="btn btn-close" onclick="startScanner()">Weiter scannen</button>
 </div>
 
 <script>
@@ -183,43 +165,17 @@
     let html5QrcodeScanner = null;
     let isScanning = true;
 
-    // 1. DATENBANK LADEN
-    fetch('app_database.json')
-        .then(r => r.json())
-        .then(data => { db = data; console.log("DB Ready"); })
-        .catch(e => console.error("DB Error", e));
+    fetch('app_database.json').then(r => r.json()).then(data => { db = data; });
 
-    // 2. HELPER: Slug Generator für URL (muss wie Python logic sein)
     function createSlug(code, name) {
-        let text = code + "-" + name;
-        text = text.toLowerCase();
-        // Ersetze alles was nicht a-z0-9 ist durch Bindestrich
-        text = text.replace(/[^a-z0-9]+/g, '-');
-        // Entferne Bindestriche am Anfang/Ende
-        text = text.replace(/^-+|-+$/g, '');
-        return text;
+        return (code + "-" + name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     }
 
-    // 3. HELPER: Übersetzer für OFF Tags
-    function translateTag(tag) {
-        // en:gluten -> Gluten
-        if(!tag) return "";
-        return tag.split(':')[1].replace(/-/g, ' ').replace(/\w/g, l => l.toUpperCase());
-    }
-
-    // 4. SCANNER STARTEN (Back Camera Forced)
     function startScanner() {
         document.getElementById('result-sheet').classList.remove('open');
         document.getElementById('loading').style.display = 'none';
-
         if(html5QrcodeScanner) return;
-
-        html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-            fps: 10, 
-            qrbox: 250,
-            facingMode: { exact: "environment" } // Versucht Rückkamera zu erzwingen
-        });
-        
+        html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250, facingMode: { exact: "environment" } });
         html5QrcodeScanner.render(onScanSuccess, (err) => {});
         isScanning = true;
     }
@@ -227,13 +183,10 @@
     function onScanSuccess(barcode) {
         if(!isScanning) return;
         isScanning = false;
-        
         try { html5QrcodeScanner.clear(); html5QrcodeScanner = null; } catch(e){}
-        
         analyzeProduct(barcode);
     }
 
-    // 5. ANALYSE LOGIK
     async function analyzeProduct(barcode) {
         const sheet = document.getElementById('result-sheet');
         const content = document.getElementById('result-content');
@@ -243,133 +196,109 @@
         content.innerHTML = "";
 
         try {
-            // API ABFRAGE
             const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
             const data = await response.json();
-
             loader.style.display = 'none';
             sheet.classList.add('open');
 
             if (data.status === 0) {
-                content.innerHTML = `<h2>Nicht gefunden 🤷‍♂️</h2><p>Unbekannter Barcode: ${barcode}</p>`;
+                content.innerHTML = `<h2>🤷‍♂️ Unbekannt</h2><p>Barcode ${barcode} nicht gefunden.</p>`;
                 return;
             }
 
             const p = data.product;
             
-            // --- DATEN EXTRAHIEREN ---
+            // --- DEEP ANALYSIS ---
+            const tags = p.ingredients_analysis_tags || [];
+            const allergens = p.allergens_tags || []; // ["en:milk", "en:gluten"]
             
-            // 1. DIET INFO (Vegan, Palmöl, etc.)
-            const analysis = p.ingredients_analysis_tags || [];
-            const isVegan = analysis.includes('en:vegan');
-            const isNonVegan = analysis.includes('en:non-vegan');
-            const isPalmOil = analysis.includes('en:palm-oil');
+            // 1. VEGAN / VEGETARISCH
+            const isVegan = tags.includes('en:vegan');
+            const isNonVegan = tags.includes('en:non-vegan');
+            const isVegetarian = tags.includes('en:vegetarian');
             
-            // 2. ALLERGENE
-            const allergens = p.allergens_tags || []; // ["en:gluten", "en:milk"]
+            // 2. INTOLERANZEN (Naive Suche in Allergenen)
+            const hasGluten = allergens.some(a => a.includes('gluten') || a.includes('wheat') || a.includes('rye'));
+            const hasMilk = allergens.some(a => a.includes('milk') || a.includes('lactose'));
             
-            // 3. E-NUMMERN
+            // 3. ZUSATZSTOFFE
             const additives = p.additives_tags || [];
-            
-            // --- HTML GENERIEREN ---
+
+            // --- HTML GENERATOR ---
             
             // Header
             let html = `
                 <div class="product-header">
                     <img src="${p.image_front_small_url || 'https://via.placeholder.com/80'}" class="product-img">
                     <div class="product-info">
-                        <div class="product-brand">${p.brands || 'Marke unbekannt'}</div>
+                        <div class="product-brand">${p.brands || ''}</div>
                         <h2 class="product-title">${p.product_name || 'Produkt'}</h2>
                     </div>
                 </div>
+                
+                <div class="badge-grid">
             `;
 
-            // Section: DIET & ALARM
-            html += `<div class="diet-grid">`;
-            
-            // Vegan Status
-            if(isVegan) {
-                html += `<div class="diet-card"><div class="diet-icon">🌱</div><div><span class="diet-label status-green">Vegan</span><span class="diet-sub">Verifiziert</span></div></div>`;
-            } else if(isNonVegan) {
-                html += `<div class="diet-card"><div class="diet-icon">🥩</div><div><span class="diet-label status-red">Nicht Vegan</span><span class="diet-sub">Tierische Stoffe</span></div></div>`;
-            } else {
-                html += `<div class="diet-card"><div class="diet-icon">❓</div><div><span class="diet-label status-grey">Unbekannt</span><span class="diet-sub">Vegan Status</span></div></div>`;
-            }
+            // Vegan Logic
+            if(isVegan) html += `<div class="info-badge"><span class="icon">🌱</span><span class="t-green">Vegan</span></div>`;
+            else if(isNonVegan) html += `<div class="info-badge"><span class="icon">🥩</span><span class="t-red">Nicht Vegan</span></div>`;
+            else if(isVegetarian) html += `<div class="info-badge"><span class="icon">🧀</span><span class="t-green">Vegetarisch</span></div>`;
+            else html += `<div class="info-badge"><span class="icon">❓</span><span class="t-grey">Veg-Status?</span></div>`;
 
-            // Palmöl
-            if(isPalmOil) {
-                html += `<div class="diet-card"><div class="diet-icon">🌴</div><div><span class="diet-label status-red">Palmöl</span><span class="diet-sub">Enthalten</span></div></div>`;
-            }
-            
+            // Gluten Logic
+            if(hasGluten) html += `<div class="info-badge"><span class="icon">🌾</span><span class="t-red">Gluten</span></div>`;
+            else html += `<div class="info-badge"><span class="icon">🍞</span><span class="t-green">Glutenfrei*</span></div>`;
+
+            // Laktose Logic
+            if(hasMilk) html += `<div class="info-badge"><span class="icon">🥛</span><span class="t-red">Laktose</span></div>`;
+            else html += `<div class="info-badge"><span class="icon">💧</span><span class="t-green">Laktosefrei*</span></div>`;
+
             html += `</div>`; // End Grid
+            html += `<p style="font-size:0.7rem; color:#64748b; margin-top:-10px;">*Basierend auf Allergen-Tags. Keine Garantie.</p>`;
 
-            // Section: ALLERGENE
-            if(allergens.length > 0) {
-                html += `<div class="section-title">⚠️ Allergene</div><div class="diet-grid">`;
-                allergens.forEach(a => {
-                    html += `<div class="diet-card" style="border-color: rgba(239,68,68,0.3)">
-                                <span class="diet-label status-red">${translateTag(a)}</span>
-                             </div>`;
-                });
-                html += `</div>`;
-            }
-
-            // Section: E-NUMMERN (CLICKABLE)
+            // E-Nummern Liste
             if(additives.length > 0) {
-                html += `<div class="section-title">🧪 Zusatzstoffe</div><div class="additive-list">`;
-                
+                html += `<div class="section-title">Enthaltene Zusatzstoffe</div><div class="item-list">`;
                 additives.forEach(tag => {
                     let code = tag.split(':')[1].toUpperCase();
-                    let info = db[code]; // Check lokale DB
-                    
-                    let riskDot = "dot-orange";
-                    let riskName = "Unbekannt";
-                    let niceName = "Lade...";
-                    let slugUrl = "#";
+                    let info = db[code];
+                    let color = "bg-orange";
+                    let name = "Lade...";
+                    let link = "#";
 
                     if(info) {
-                        niceName = info.n;
-                        riskName = info.r;
-                        if(info.r.includes("Unbedenklich")) riskDot = "dot-green";
-                        if(info.r.includes("Bedenklich") || info.r.includes("Hoch")) riskDot = "dot-red";
-                        
-                        // Generiere Link zum Lexikon
-                        const slug = createSlug(code, niceName);
-                        slugUrl = `${LEXIKON_URL}/${slug}.html`;
+                        name = info.n;
+                        if(info.r.includes("Unbedenklich")) color = "bg-green";
+                        if(info.r.includes("Bedenklich") || info.r.includes("Hoch")) color = "bg-red";
+                        link = `${LEXIKON_URL}/${createSlug(code, name)}.html`;
                     } else {
-                        // Fallback für unbekannte E-Nummern
-                        niceName = "Nicht in DB";
+                        name = "Nicht in DB";
                     }
 
-                    // Clickable Row
                     html += `
-                    <div class="additive-item" onclick="window.open('${slugUrl}', '_blank')">
+                    <div class="list-item" onclick="window.open('${link}', '_blank')">
                         <div style="display:flex; align-items:center;">
-                            <span class="${riskDot} risk-dot"></span>
-                            <div>
-                                <div><span class="code-badge">${code}</span> <span style="font-weight:600; font-size:0.95rem;">${niceName}</span></div>
-                                <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">${riskName}</div>
-                            </div>
+                            <span class="risk-blob ${color}"></span>
+                            <div><span class="code-pill">${code}</span> <span style="font-weight:600; font-size:0.9rem;">${name}</span></div>
                         </div>
-                        <div class="additive-arrow">›</div>
+                        <span style="opacity:0.3">›</span>
                     </div>`;
                 });
                 html += `</div>`;
             } else {
-                html += `<div style="margin-top:1.5rem; text-align:center; color:#94a3b8; background:rgba(255,255,255,0.05); padding:1rem; border-radius:12px;">✅ Clean Label: Keine E-Nummern deklariert.</div>`;
+                html += `<div style="text-align:center; padding:20px; color:#94a3b8; background:rgba(255,255,255,0.05); border-radius:12px;">✅ Keine E-Nummern deklariert</div>`;
             }
 
             content.innerHTML = html;
 
         } catch (e) {
             loader.style.display = 'none';
-            content.innerHTML = `<p>Fehler: Kein Internet?</p>`;
+            content.innerHTML = "Fehler beim Laden.";
             sheet.classList.add('open');
         }
     }
 
     startScanner();
 </script>
-
 </body>
 </html>
