@@ -1,0 +1,38 @@
+name: Build E-Check App
+
+on:
+  push:
+    paths:
+      - 'generated_additives.json'
+      - 'build_app.py'
+      - 'convert_db.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v3
+
+      - name: Python einrichten
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: 1. Datenbank konvertieren 🔄
+        run: python convert_db.py
+
+      - name: 2. HTML App generieren 🏗️
+        run: python build_app.py
+
+      - name: Änderungen speichern (Commit & Push) 💾
+        run: |
+          git config --global user.name "App-Bot 🤖"
+          git config --global user.email "bot@example.com"
+          git add app_database.json index.html
+          git diff-index --quiet HEAD || (git commit -m "🚀 App Update: DB & HTML neu gebaut" && git push)
